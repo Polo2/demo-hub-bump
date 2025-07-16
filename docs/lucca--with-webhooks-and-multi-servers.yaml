@@ -1,0 +1,2766 @@
+openapi: 3.1.0
+info:
+  title: Lucca API reference
+  version: '2023-09-08-v3'
+  description: |
+    Everything about the Lucca API
+  contact:
+    name: API Support
+    url: 'https://support.lucca.fr'
+    email: api@luccasoftware.com
+servers:
+  - url: 'https://{account}.ilucca-sandbox.{region}'
+    description: |
+      Sandbox env.
+    variables:
+      account:
+        default: my-company
+        description: |
+          This value is assigned by Lucca upon deploying your Lucca account.
+      region:
+        default: net
+        description: |
+          Swiss clients: "ch". Everyone else: "net".
+  - url: 'https://{account}.ilucca.{region}'
+    description: |
+      Production env.
+    variables:
+      account:
+        default: my-company
+        description: |
+          This value is assigned by Lucca upon deploying your Lucca account.
+      region:
+        default: net
+        description: |
+          Swiss clients: "ch". Everyone else: "net".
+  - url: 'https://{account}.ilucca-demo.{region}'
+    description: |
+      Demonstration env.
+    variables:
+      account:
+        default: my-company
+        description: |
+          This value is assigned by Lucca upon deploying your Lucca account.
+      region:
+        default: net
+        description: |
+          Swiss clients: "ch". Everyone else: "net".
+tags:
+  - name: leaves
+    description: |
+      Employees' leaves.
+  - name: events
+    description: |
+      Webhook events.
+  - name: webhooks
+paths:
+  '/lucca-api/leaves':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+    get:
+      operationId: get-leaves
+      tags:
+        - leaves
+      summary: List Leaves
+      description: |
+        Retrieve a paginated collection of employees' leaves satisfying given query criteria.
+      security:
+        - oAuth:
+            - leaves.read
+            - leaves.write
+      parameters:
+        - name: from
+          in: query
+          description: |
+            Only return Leaves ocurring after this date (or on the same day).
+          schema:
+            type: string
+            format: date
+            examples:
+              - '2023-01-01'
+        - name: until
+          in: query
+          description: |
+            Only return Leaves ocurring before this date (or on the same day).
+          schema:
+            type: string
+            format: date
+            examples:
+              - '2023-01-31'
+        - name: employee.id
+          in: query
+          description: |
+            Comma-separated list of employees identifiers.
+          schema:
+            type: array
+            items:
+              type: string
+          explode: false
+          style: form
+        - name: leaveAccount.id
+          in: query
+          description: |
+            Comma-separated list of leaveAccount identifiers.
+          schema:
+            type: array
+            items:
+              type: string
+            explode: false
+            style: form
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: sort
+          in: query
+          description: |
+            Sort results on an attribute value. `?sort={attribute}` and `+{attribute}` are equivalent and indicate ascending ordering. `-{attribute}` indicates a descending ordering.
+            Sorting attributes can be chained: `?sort={attr1},-{attr2},+{attr3}`.
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - id
+                - +id
+                - '-id'
+                - employee.id
+                - +employee.id
+                - '-employee.id'
+                - startsOn
+                - +startsOn
+                - '-startsOn'
+                - endsOn
+                - +endsOn
+                - '-endsOn'
+                - status
+                - +status
+                - '-status'
+            explode: false
+            style: form
+      responses:
+        '200':
+          description: |
+            Paginated list of leaves satisfying query filters.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/leaves'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+    post:
+      operationId: post-leaves
+      tags:
+        - leaves
+      summary: Create a new Leave
+      description: |
+        Create a new `leave` request in the system for a given employee.
+        Triggers a `leave.created` event.
+      security:
+        - oAuth:
+            - leaves.write
+      requestBody:
+        content:
+          application/lucca+json:
+            schema:
+              $ref: '#/components/schemas/leave'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/leave'
+      responses:
+        '201':
+          description: |
+            Representation of the created Leave.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            Location:
+              schema:
+                type: string
+                format: uri
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/leave'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+  '/lucca-api/leaves/{leaveId}':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+      - name: leaveId
+        description: |
+          Unique id of the Leave.
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: get-leaves-leaveid
+      tags:
+        - leaves
+      summary: Get a Leave
+      description: |
+        Retrieve a paginated list of Leaves satisfying given query filters.
+      security:
+        - oAuth:
+            - leaves.read
+            - leaves.write
+      responses:
+        '200':
+          description: |
+            Representation of the requested leave.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/leave'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+    delete:
+      operationId: delete-leaves-leaveid
+      tags:
+        - leaves
+      summary: Delete a Leave
+      description: |
+        Deletes an existing Leave. The Leave will no longer be accessible (ie. the resource URL will return a 404).
+
+        Triggers a `leave.deleted` event.
+      security:
+        - oAuth:
+            - leaves.write
+      responses:
+        '204':
+          description: |
+            Leave was successfully deleted.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+  '/lucca-api/leave-requests':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+    get:
+      operationId: get-leave-requests
+      tags:
+        - leaves
+      summary: List Leave Requests
+      description: |
+        Retrieve a paginated list of Leave Requests. A Leave Request is an object wrapping a Leave which bears the approval process.
+        A Leave Request is automatically created whenever a Leave is created with a `tentative` status.
+
+        Approving a Leave Request may be a multi-step affair, as the approval of several managers may be needed.
+      security:
+        - oAuth:
+            - leaves.read
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - denied
+        - name: leave.id
+          in: query
+          description: |
+            Only return Leave Requests matching a comma separated list of Leave (ids).
+          schema:
+            type: array
+            items:
+              type: string
+            explode: false
+            style: form
+          required: false
+        - name: employee.id
+          in: query
+          description: |
+            Only return Leave Requests matching a comma separated list of Employees (ids).
+          schema:
+            type: array
+            items:
+              type: string
+            explode: false
+            style: form
+          required: false
+        - name: expectedApprover.id
+          in: query
+          description: |
+            Only return Leave Requests matching a comma separated list of Approvers (employee ids).
+          schema:
+            type: array
+            items:
+              type: string
+            explode: false
+            style: form
+          required: false
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: |
+            List of Leave Requests
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/leave-requests'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+  '/lucca-api/leave-requests/{leaveRequestId}':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+      - name: leaveRequestId
+        in: path
+        description: Identifier of the Leave Request
+        schema:
+          type: string
+        required: true
+    get:
+      operationId: get-leave-requests-leaverequestid
+      tags:
+        - leaves
+      summary: Get a Leave Request
+      description: |
+        Retrieve a single Leave Request representation.
+      security:
+        - oAuth:
+            - leaves.read
+      responses:
+        '200':
+          description: |
+            Representation of the Leave Request.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/json+lucca:
+              schema:
+                $ref: '#/components/schemas/leave-request'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+  '/lucca-api/leave-request-steps':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+    post:
+      operationId: post-leave-request-steps
+      tags:
+        - leaves
+      summary: Approve or Deny a Leave Request
+      description: |
+        The `action` attribute indicates whether the Leave should be approved or denied.
+        Once denied, the approval process ends, and a `leave.updated` event is fired.
+
+        When approved, the next approver is called for.
+
+        Once all approvers have approved the Leave Request, then the approval process ends and:
+          1. the Leave Request status becomes `approved`
+          2. the Leave status becomes `confirmed`.
+          3. a `leave.updated` event is fired.
+      security:
+        - oAuth:
+            - leaves.write
+      requestBody:
+        content:
+          application/lucca+json:
+            schema:
+              $ref: '#/components/schemas/leave-request-step'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/leave-request-step'
+      responses:
+        '201':
+          description: |
+            Representation ...
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            Location:
+              schema:
+                type: string
+                format: uri
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/leave-request-step'
+                  - type: object
+                    properties:
+                      embeds:
+                        type: object
+                        properties:
+                          leaveRequest:
+                            $ref: '#/components/schemas/leave-request'
+  '/lucca-api/leave-accounts':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+    get:
+      operationId: get-leave-accounts
+      tags:
+        - leaves
+      summary: List Leave Accounts
+      description: |
+        Retrieve a paginated list of Leave Accounts. A Leave Account is a type of Leave: "vacations", "sick leaves", etc...
+      security:
+        - oAuth:
+            - leaves.write
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: |
+            List of Leave Accounts.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/leave-accounts'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+  '/lucca-api/leave-accounts/{leaveAccountId}':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+      - name: leaveAccountId
+        in: path
+        description: |
+          Identifier of the Leave Account
+        schema:
+          type: string
+        required: true
+    get:
+      operationId: get-leave-accounts-leaveaccountid
+      tags:
+        - leaves
+      summary: Get a Leave Account
+      description: |
+        Retrieve a single Leave Account
+      responses:
+        '200':
+          description: |
+            The Leave Account representation.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/leave-account'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+  '/lucca-api/webhook-subscriptions':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+    get:
+      operationId: get-webhook-subscriptions
+      tags:
+        - events
+      summary: List Webhook Subscriptions
+      description: |
+        Retrieve a paginated collection of Webhook Subscriptions.
+      parameters:
+        - name: status
+          in: query
+          description: |
+            Only return subscriptions that are at one of the given statuses.
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - active
+                - suspended
+                - inactive
+        - name: application.id
+          in: query
+          description: |
+            Only return subscriptions for a given authorized application.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: |
+            Succesfully retrieved the Webhook Subscriptions representation.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/webhook-subscriptions'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+  '/lucca-api/webhook-subscriptions/{webhookSubscriptionId}':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+      - name: webhookSubscriptionId
+        in: path
+        required: true
+        description: |
+          Identifier of the Webhook Subscription.
+        schema:
+          type: string
+    get:
+      operationId: get-webhook-subscriptions-webhooksubscriptionid
+      tags:
+        - events
+      summary: Get a Webhook Subscription
+      description: |
+        Retrieve a Webhook Subscription representation.
+      responses:
+        '200':
+          description: |
+            Successfully retrieved the Webhook Subscription representation
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/webhook-subscription'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+  '/lucca-api/webhook-events':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+      - $ref: '#/components/parameters/ifNoneMatch'
+      - $ref: '#/components/parameters/ifMatch'
+    get:
+      operationId: get-webhook-events
+      tags:
+        - events
+      summary: List Webhook Events
+      description: |
+        Retrieve a paginated list of Webhook Events.
+        Used in case of manual synchronization of resources with a third-party app.
+      parameters:
+        - name: status
+          in: query
+          description: |
+            Delivery status
+          schema:
+            type: string
+            enum:
+              - scheduled
+              - delivered
+              - failed
+      responses:
+        '200':
+          description: |
+            Successfully retrieved the Webhook Events representation.
+          headers:
+            Api-Version:
+              $ref: '#/components/headers/apiVersion'
+            ETag:
+              $ref: '#/components/headers/eTag'
+            Deprecation:
+              $ref: '#/components/headers/deprecation'
+            Sunset:
+              $ref: '#/components/headers/sunset'
+          content:
+            application/lucca+json:
+              schema:
+                $ref: '#/components/schemas/webhook-events'
+            application/cloudevents-batch+json:
+              schema:
+                $ref: '#/components/schemas/webhook-cloudevents'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+webhooks:
+  'leave.created':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+    post:
+      operationId: event-leave-created
+      tags:
+        - events
+      summary: leave.created Event
+      description: A new Leave was created.
+      requestBody:
+        description: Information about the new Leave.
+        content:
+          'application/lucca+json':
+            schema:
+              $ref: '#/components/schemas/webhook-event-leave-created'
+          'application/cloudevents+json':
+            schema:
+              $ref: '#/components/schemas/webhook-cloudevent-leave-created'
+      responses:
+        '202':
+          description: Return a 202 status to indicate that the data was received successfully.
+  'leave.deleted':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+    post:
+      operationId: event-leave-deleted
+      tags:
+        - events
+      summary: leave.deleted Event
+      description: A new Leave was deleted.
+      requestBody:
+        description: Information about the deleted Leave.
+        content:
+          'application/lucca+json':
+            schema:
+              $ref: '#/components/schemas/webhook-event-leave-deleted'
+          'application/cloudevents+json':
+            schema:
+              $ref: '#/components/schemas/webhook-cloudevent-leave-deleted'
+      responses:
+        '202':
+          description: Return a 202 status to indicate that the data was received successfully.
+  'leave.updated':
+    parameters:
+      - $ref: '#/components/parameters/apiVersion'
+    post:
+      operationId: event-leave-updated
+      tags:
+        - events
+      summary: leave.updated Event
+      description: A new Leave was updated.
+      requestBody:
+        description: Information about the updated Leave.
+        content:
+          'application/lucca+json':
+            schema:
+              $ref: '#/components/schemas/webhook-event-leave-updated'
+          'application/cloudevents+json':
+            schema:
+              $ref: '#/components/schemas/webhook-cloudevent-leave-updated'
+      responses:
+        '202':
+          description: Return a 202 status to indicate that the data was received successfully.
+components:
+  parameters:
+    apiVersion:
+      name: Api-Version
+      in: header
+      description: |
+        Set the API version.
+      schema:
+        $ref: '#/components/headers/apiVersion/schema'
+      required: true
+    ifNoneMatch:
+      name: If-None-Match
+      in: header
+      description: |
+        Only execute the request if current cached version of the resource does not match the one given here.
+      schema:
+        $ref: '#/components/headers/eTag/schema'
+      required: false
+    ifMatch:
+      name: If-Match
+      in: header
+      description: |
+        Only execute the request if current cached version of the resource matches the one given here. Useful to avoid concurrency conflicts.
+      schema:
+        $ref: '#/components/headers/eTag/schema'
+      required: false
+    page:
+      name: page
+      in: query
+      description: |
+        Index of the page to retrieve. Starts at zero.
+      schema:
+        type: integer
+        minimum: 1
+    limit:
+      name: limit
+      in: query
+      description: |
+        Number of items per page. Defaults to 100. Maximum is 1,000.
+      schema:
+        type: integer
+        default: 100
+        minimum: 0
+        maximum: 1000
+  headers:
+    apiVersion:
+      schema:
+        description: Name of the API version.
+        type: string
+        const: '2023-09-01'
+        examples:
+          - '2023-09-01'
+    eTag:
+      schema:
+        description: Identifies the cached version of the resource.
+        type: string
+        examples:
+          - W/q5sd4w2x1c1gfdg
+    deprecation:
+      schema:
+        description: Signals the resource has been deprecated.
+        type: string
+        format: date
+        examples:
+          - ''
+          - '2024-01-01'
+    sunset:
+      schema:
+        description: Planned date of sunset.
+        type: string
+        format: date
+        examples:
+          - ''
+          - '2024-06-01'
+  responses:
+    '400':
+      description: |
+        Bad request. You may:
+          - (write requests) make sure the request body conforms with the excpected schema.
+          - double check all required parameters are set.
+      headers:
+        Api-Version:
+          $ref: '#/components/headers/apiVersion'
+        Deprecation:
+          $ref: '#/components/headers/deprecation'
+        Sunset:
+          $ref: '#/components/headers/sunset'
+      content:
+        application/lucca+json:
+          schema:
+            $ref: '#/components/schemas/problem'
+            examples:
+              - type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1'
+                title: One or more validation errors occurred.
+                status: 400
+                errors:
+                  endsOn:
+                    - 'Invalid period: StartsOn should be before EndsOn.'
+                  employeeId:
+                    - employeeId query parameter is required
+                extensions:
+                  traceId: '|78777424-49cc27e04281bbfc.'
+    '401':
+      description: |
+        You are not authenticated. Please refresh your token.
+      headers:
+        Api-Version:
+          $ref: '#/components/headers/apiVersion'
+        Deprecation:
+          $ref: '#/components/headers/deprecation'
+        Sunset:
+          $ref: '#/components/headers/sunset'
+      content:
+        application/lucca+json:
+          schema:
+            $ref: '#/components/schemas/problem'
+            examples:
+              - type: 'https://datatracker.ietf.org/doc/html/rfc7235#section-3.1'
+                title: Unauthorized
+                status: 401
+                instance: /lucca-api/leaves/1573
+    '403':
+      description: |
+        You do not have the required oAuth scopes.
+      headers:
+        Api-Version:
+          $ref: '#/components/headers/apiVersion'
+        Deprecation:
+          $ref: '#/components/headers/deprecation'
+        Sunset:
+          $ref: '#/components/headers/sunset'
+      content:
+        application/lucca+json:
+          schema:
+            $ref: '#/components/schemas/problem'
+            examples:
+              - type: 'https://datatracker.ietf.org/doc/html/rfc7235#section-3.1'
+                title: Unauthorized
+                status: 401
+                instance: /lucca-api/leaves/1573
+    '404':
+      description: |
+        Not Found. Resource may have previously been deleted.
+      headers:
+        Api-Version:
+          $ref: '#/components/headers/apiVersion'
+      content:
+        application/lucca+json:
+          schema:
+            $ref: '#/components/schemas/problem'
+            examples:
+              - type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4'
+                title: Not Found
+                status: 404
+                instance: /lucca-api/leaves/1573
+  examples:
+    leave-collection:
+      summary: Example of a collection of leaves
+      value:
+        url: 'https://my-company.ilucca.net/lucca-api/leaves?page=1&limit=2'
+        type: leaves-collection
+        data:
+          totalCount: 2
+        embeds:
+          - $ref: '#/components/examples/john-doe-vacations/value'
+          - $ref: '#/components/examples/john-doe-paternity/value'
+        links:
+          prev: null
+          next:
+            href: 'https://my-company.ilucca.net/lucca-api/leaves?page=2&limit=2'
+            type: 'application/lucca+json; schema=leaves'
+    john-doe-vacations:
+      summary: Example representation on a leave.
+      value:
+        id: '5367'
+        url: 'https://my-company.ilucca.net/lucca-api/leaves/5367'
+        type: leave
+        data:
+          startsOn: '2023-01-02'
+          startsHalfDay: firstHalfDay
+          endsOn: '2023-01-13'
+          endsHalfDay: secondHalfDay
+          employee:
+            id: '416'
+            url: 'https://my-company.ilucca.net/lucca-api/employees/416'
+            type: employee
+          leaveAccount:
+            id: '218'
+            url: 'https://my-company.ilucca.net/lucca-api/leave-accounts/218'
+            type: leave-account
+          includedDays:
+            - '2023-01-02'
+            - '2023-01-03'
+            - '2023-01-04'
+            - '2023-01-05'
+            - '2023-01-06'
+            - '2023-01-09'
+            - '2023-01-10'
+            - '2023-01-11'
+            - '2023-01-12'
+            - '2023-01-13'
+          totalDuration:
+            iso: P10D
+            value: 10
+            unit: days
+          status: confirmed
+        embeds:
+          employee:
+            id: '416'
+            url: 'https://my-company.ilucca.net/lucca-api/employees/416'
+            type: employee
+            data:
+              givenName: John
+              familyName: Doe
+          leaveAccount:
+            id: '218'
+            url: 'https://my-company.ilucca.net/lucca-api/leave-accounts/218'
+            type: leave-account
+            data:
+              name: Vacations
+              nature: vacations
+        links:
+          leaveRequest:
+            href: 'https://my-company.ilucca.net/lucca-api/leave-requests/8764'
+            type: 'application/lucca+json; schema=leave-request'
+            title: Link to this leave request for approval.
+          approve:
+            href: 'https://my-company.ilucca.net/lucca-api/leave-requests-steps'
+            type: 'application/lucca+json; schema=leave-request-step'
+            title: Approve the leave request. It may need multiple approvals from different employees.
+          deny:
+            href: 'https://my-company.ilucca.net/lucca-api/leave-requests-steps'
+            type: 'application/lucca+json; schema=leave-request-step'
+            title: Deny the leave request.
+    john-doe-paternity:
+      summary: Example of a paternity leave for the John Doe employee
+      value:
+        id: '3746'
+        url: 'https://my-company.ilucca.net/lucca-api/leaves/3746'
+        type: leave
+        data:
+          startsOn: '2023-08-07'
+          startsHalfDay: firstHalfDay
+          endsOn: '2023-08-11'
+          endsHalfDay: secondHalfDay
+          employee:
+            id: '416'
+            url: 'https://my-company.ilucca.net/lucca-api/employees/416'
+            type: employee
+          leaveAccount:
+            id: '218'
+            url: 'https://my-company.ilucca.net/lucca-api/leave-accounts/67'
+            type: leave-account
+          totalDuration:
+            iso: P5D
+            value: 5
+            unit: days
+          status: tentative
+          includedDays:
+            - '2023-08-07'
+            - '2023-08-08'
+            - '2023-08-09'
+            - '2023-08-10'
+            - '2023-08-11'
+          frenchSickLeaveDetails:
+            lastWorkingDay: '2023-08-04'
+            paidDaysCount: 5
+            unpaidDaysCount: 0
+            compensationRate: 1
+            hasSubrogation: true
+            subrogationStartsOn: '2023-08-07'
+            subrogationEndsOn: '2023-08-11'
+            extendsSickLeave: null
+            earlyReturnOn: null
+            paternity:
+              childArrival: birth
+              childrenCount: 2
+              adoptingParentsSharingLeaveRights: unshared
+              childExpectedOn: '2023-08-15'
+              childArrivedOn: '2023-08-05'
+              partitioning: fragmented
+        embeds:
+          employee:
+            id: '416'
+            url: 'https://my-company.ilucca.net/lucca-api/employees/416'
+            type: employee
+            data:
+              givenName: John
+              familyName: Doe
+          leaveAccount:
+            id: '67'
+            url: 'https://my-company.ilucca.net/lucca-api/leave-accounts/67'
+            type: leave-account
+            data:
+              name: Paternity
+              nature: paternity
+          frenchSickLeaveDetails:
+            lastWorkingDay: null
+            paidDaysCount: null
+            unpaidDaysCount: 0
+            compensationRate: 1
+            hasSubrogation: false
+            subrogationStartsOn: null
+            subrogationEndsOn: null
+            extendsSickLeave: null
+            earlyReturnOn: null
+            nature: paternity
+            ordinarySickness: null
+            commutingAccident: null
+            workAccident: null
+            occupationalDisease: null
+            maternity: null
+            paternity:
+              childArrival: adoption
+              childrenCount: 3
+              adoptingParentsSharingLeaveRights: shared
+              childExpectedOn: '2023-18-8'
+              childArrivedOn: null
+              partitioning: fragmented
+        links:
+          leaveRequest:
+            href: 'https://my-company.ilucca.net/lucca-api/leave-requests/7864'
+            type: 'application/lucca+json; schema=leave-request'
+            title: Link to this leave request for approval.
+          approve:
+            href: 'https://my-company.ilucca.net/lucca-api/leave-requests-steps'
+            type: 'application/lucca+json; schema=leave-request-step'
+            title: Approve the leave request. It may need multiple approvals from different employees.
+          deny:
+            href: 'https://my-company.ilucca.net/lucca-api/leave-requests-steps'
+            type: 'application/lucca+json; schema=leave-request-step'
+            title: Deny the leave request.
+  schemas:
+    problem:
+      title: Problem
+      x-stoplight:
+        id: mv6texswa1mdz
+      x-tags:
+        - internal
+      description: |
+        Represents a "problem detail" as a way to carry machine-readable details of errors
+        in a HTTP response.
+      type: object
+      properties:
+        type:
+          type:
+            - string
+            - 'null'
+        title:
+          type:
+            - string
+            - 'null'
+        status:
+          type:
+            - integer
+            - 'null'
+          format: int32
+          minimum: 0
+        detail:
+          type:
+            - string
+            - 'null'
+        instance:
+          type:
+            - string
+            - 'null'
+      additionalProperties:
+        title: Object
+    link:
+      title: Link
+      x-stoplight:
+        id: t43fn0ro6tswo
+      x-tags:
+        - internal
+      description: |
+        Object that represents an hyperlink.
+      type: object
+      properties:
+        href:
+          type: string
+          format: uri
+          description: |
+            Its value is either a URI [RFC3986] or a URI Template [RFC6570].
+            If it's a URI template, then the "templated" property must be
+            set to `true`.
+        title:
+          type: string
+        name:
+          type: string
+          description: |
+            Used as a secondary key for selecting Link Objects which share
+            the same relation type.
+        templated:
+          type: boolean
+          description: |
+            Indicates the URI contains a variable parameter that must
+            be expanded.
+        type:
+          type: string
+          description: |
+            Hint that indicates the media type expected when dereferencing
+            the target resource
+        describedBy:
+          type: string
+          format: uri
+          description: |
+            URI of the document (e.g. OpenAPI or JSON Schema) describing
+            the link target.
+      required:
+        - href
+    links:
+      title: Links (collection)
+      x-stoplight:
+        id: 5ix0ks3b13ucm
+      x-tags:
+        - internal
+      type: object
+      properties:
+        curies:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/link'
+              - type: object
+                required:
+                  - name
+    # relationship:
+    #   x-stoplight:
+    #     id: m1rddjowhk05g
+    #   type: object
+    #   properties:
+    #     id:
+    #       type: string
+    #       description: |
+    #         Internal identifier of this resource.
+    #     url:
+    #       type: string
+    #       format: uri
+    #       description: |
+    #         URL of this resource.
+    #     type:
+    #       type: string
+    #       description: |
+    #         Type of the resource. Name matches the expected JSON schema name.
+    #   additionalProperties: false
+    #   required:
+    #     - url
+    #     - type
+    resource:
+      title: Resource
+      x-tags:
+        - internal
+      x-stoplight:
+        id: 8ocd24k4xvxgq
+      type: object
+      properties:
+        id:
+          type: string
+          description: |
+            Unique (among the collection of its peers) identifier of this resource.
+        type:
+          type: string
+          description: |
+            Name of the schema this resource conforms to.
+          examples:
+            - leave
+            - leave-request
+            - leave-request-step
+        url:
+          type: string
+          format: uri
+          description: |
+            Absolute URL of the resource.
+        data:
+          type: object
+          additionalProperties: true
+        embeds:
+          type: object
+          additionalProperties:
+            oneOf:
+              - $ref: '#/components/schemas/resource'
+              - type: array
+                items:
+                  $ref: '#/components/schemas/resource'
+          readOnly: true
+        links:
+          $ref: '#/components/schemas/links'
+          readOnly: true
+    webhook-event:
+      title: Event (webhooks)
+      x-stoplight:
+        id: gdufmba18pj5g
+      x-tags:
+        - events
+      type: object
+      description: |
+        Default representation of an Event.
+        An Event represents **a change in an application state that
+        might be of interest to third-party apps**.
+
+        In order to be properly coordinated with the ReST API, an
+        Event is always a change that is in relation to a
+        resource represented in the API.
+
+        There are different types of Events that depend on the
+        nature of the change as well as the affected resource type.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: |
+            Uniquely identifies the Event.
+          examples:
+            - '78fa5d8c-3436-49aa-82cc-ab1a64c48ed9'
+        type:
+          type: string
+          const: event
+          enum:
+          - event1
+          - event2
+        url:
+          type: string
+          format: uri
+          const: const-URL
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              description: |
+                Indicates what type of event occurred.
+                Please refer to https://developers.lucca.fr/event-types
+                in order to view all supported event types...
+            source:
+              type: string
+              format: uri
+              description: |
+                Identifies the context in which an event happened: the
+                API endpoint that hosts the collection of resources the
+                affected resource belongs to.
+              examples:
+                - 'https://example.ilucca.net/lucca-api/leaves'
+            occurredAt:
+              type: string
+              format: date-time
+            firstDeliveryAt:
+              description: Timestamp of the first delivery attempt (UTC).
+              type: string
+              format: date-time
+              examples:
+                - '2023-08-29T09:10:32.001Z'
+            latestDeliveryAt:
+              description: Timestamp of the latest delivery attempt (UTC).
+              type: string
+              format: date-time
+              examples:
+                - '2023-08-29T09:12:33.001Z'
+            deliveryAttemptsCount:
+              description: Number of times this event has been attempted to be delivered.
+              type: integer
+              minimum: 0
+              examples:
+                - 2
+            deliveryStatus:
+              description: Indicates whether the event has been delivered or not.
+              type: string
+              enum:
+                - delivered
+                - undelivered
+                - failed
+              examples:
+                - delivered
+            affectedResource:
+              type: object
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+            subscription:
+              type: object
+              description: |
+                The Subscription that gave way to this Event being delivered.
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  examples:
+                    - 'd290f1ee-6c54-4b01-90e6-d701748f0851'
+                type:
+                  type: string
+                  const: webhook-subscription
+                url:
+                  type: string
+                  format: uri
+                  examples:
+                    - 'https://example.ilucca.net/lucca-api/webhook-subscriptions/d290f1ee-6c54-4b01-90e6-d701748f0851'
+          required:
+            - type
+            - source
+            - occurredAt
+            - firstDeliveryAt
+            - latestDeliveryAt
+            - deliveryAttemptsCount
+            - deliveryStatus
+            - subscription
+      required:
+        - id
+        - url
+        - type
+        - source
+        - occurredAt
+        - firstDeliveryAt
+        - latestDeliveryAt
+        - deliveryAttemptsCount
+        - deliveryStatus
+        - subscription
+    webhook-events:
+      title: Webhook Events (collection)
+      x-stoplight:
+        id: 7bhkffab7lnp7
+      x-tags:
+        - events
+      type: object
+      properties:
+        type:
+          type: string
+          const: webhook-events
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            totalCount:
+              type: integer
+              minimum: 0
+              maximum: 1000
+        embeds:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/webhook-event-leave-created'
+                  - $ref: '#/components/schemas/webhook-event-leave-updated'
+                  - $ref: '#/components/schemas/webhook-event-leave-deleted'
+              minItems: 0
+              maxItems: 1000
+    webhook-cloudevent:
+      title: CloudEvents Event (webhooks)
+      x-stoplight:
+        id: a17bd06bad205
+      x-tags:
+        - events
+      type: object
+      properties:
+        specversion:
+          type: string
+          const: 1.0.3
+        id:
+          type: string
+          format: uuid
+          description: |
+            Identifies the Event.
+            Event producers MUST ensure that the source and id
+            combination is unique for each distinct Event.
+          examples:
+            - '78fa5d8c-3436-49aa-82cc-ab1a64c48ed9'
+        type:
+          type: string
+          description: |
+            Indicates what type of event occurred.
+            Please refer to https://developers.lucca.fr/event-types
+            in order to view all supported event types.
+            Is prefixed with a reverse-DNS name.
+          examples:
+            - 'com.luccasoftware.leave.created'
+        source:
+          type: string
+          format: uri
+          description: |
+            Identifies the context in which an event happened: the
+            API endpoint that hosts the collection of resources the
+            affected resource belongs to.
+          examples:
+            - 'https://example.ilucca.net/lucca-api/leaves'
+        time:
+          type: string
+          format: date-time
+        comluccasoftwarefirstdeliverytime:
+          description: Timestamp of the first delivery attempt (UTC).
+          type: string
+          format: date-time
+          examples:
+            - '2023-08-29T09:10:32.001Z'
+        comluccasoftwarelatestdeliverytime:
+          description: Timestamp of the latest delivery attempt (UTC).
+          type: string
+          format: date-time
+          examples:
+            - '2023-08-29T09:12:33.001Z'
+        comluccasoftwaredeliveriescount:
+          description: Number of times this event has been attempted to be delivered.
+          type: integer
+          minimum: 0
+          examples:
+            - 2
+        comluccasoftwaresubscriptionid:
+          description: |
+            The Subscription that gave way to this Event being delivered.
+          type: string
+        comluccasoftwaresubscriptionurl:
+          description: |
+            URL of the Subscription that gave way to this Event being delivered.
+          type: string
+    webhook-cloudevents:
+      title: Webhook CloudEvents (collection)
+      x-stoplight:
+        id: xlbkvw28g0svn
+      x-tags:
+        - events
+      type: array
+      items:
+        type: array
+        items:
+          oneOf:
+            - $ref: '#/components/schemas/webhook-cloudevent-leave-created'
+            - $ref: '#/components/schemas/webhook-cloudevent-leave-updated'
+            - $ref: '#/components/schemas/webhook-cloudevent-leave-deleted'
+        minItems: 0
+        maxItems: 1000
+    webhook-event-leave-created:
+      title: leave.created Event
+      x-stoplight:
+        id: xen1vqe7rjqff
+      x-tags:
+        - events
+      allOf:
+        - $ref: '#/components/schemas/webhook-event'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                type:
+                  type: string
+                  const: leave.created--yeah----Friday
+            embeds:
+              type: object
+              properties:
+                affectedResource:
+                  $ref: '#/components/schemas/leave'
+    webhook-event-leave-deleted:
+      title: leave.deleted Event
+      x-stoplight:
+        id: 7164a8a1bdb1d
+      x-tags:
+        - events
+      allOf:
+        - $ref: '#/components/schemas/webhook-event'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                type:
+                  type: string
+                  const: leave.deleted
+    webhook-event-leave-updated:
+      title: leave.updated Event
+      x-stoplight:
+        id: 9ig49qyexm2t3
+      x-tags:
+        - events
+      allOf:
+        - $ref: '#/components/schemas/webhook-event'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                type:
+                  type: string
+                  const: leave.updated
+            embeds:
+              type: object
+              properties:
+                updatedAttributes:
+                  type: object
+                  additionalProperties: true
+                affectedResource:
+                  $ref: '#/components/schemas/leave'
+    webhook-cloudevent-leave-created:
+      title: leave.created Event (CloudEvents)
+      x-stoplight:
+        id: 2bfa6682fca01
+      x-tags:
+        - events
+      allOf:
+        - $ref: '#/components/schemas/webhook-cloudevent'
+        - type: object
+          properties:
+            type:
+              type: string
+              const: com.luccasoftware.leave.created
+            data:
+              type: object
+              properties:
+                affectedResource:
+                  $ref: '#/components/schemas/leave'
+    webhook-cloudevent-leave-deleted:
+      title: leave.deleted Event (CloudEvents)
+      x-stoplight:
+        id: lvvykkk4xs97l
+      x-tags:
+        - events
+      allOf:
+        - $ref: '#/components/schemas/webhook-cloudevent'
+        - type: object
+          properties:
+            type:
+              type: string
+              const: com.luccasoftware.leave.deleted
+            data:
+              type: object
+              properties:
+                affectedResource:
+                  $ref: '#/components/schemas/leave'
+    webhook-cloudevent-leave-updated:
+      title: leave.updated Event (CloudEvents)
+      x-stoplight:
+        id: 2ptjzq5eiir7d
+      x-tags:
+        - events
+      allOf:
+        - $ref: '#/components/schemas/webhook-cloudevent'
+        - type: object
+          properties:
+            type:
+              type: string
+              const: com.luccasoftware.leave.updated
+            data:
+              type: object
+              properties:
+                updatedAttributes:
+                  type: object
+                  additionalProperties: true
+                affectedResource:
+                  $ref: '#/components/schemas/leave'
+    duration:
+      title: Duration (time interval)
+      x-stoplight:
+        id: fx4tc8noqbc6c
+      x-tags:
+        - internal
+      type: object
+      properties:
+        iso:
+          type: string
+          format: duration
+        value:
+          type: number
+          multipleOf: 0.001
+        unit:
+          type: string
+          enum:
+            - days
+            - hours
+      examples:
+        - value: 35
+          iso: P1DT11H
+          unit: hours
+        - value: 5
+          iso: P5D
+          unit: days
+    half-day-position:
+      title: Half Day Position
+      x-stoplight:
+        id: smq1b7xpvy0h7
+      x-tags:
+        - internal
+      type: string
+      enum:
+        - firstHalfDay
+        - secondHalfDay
+    leave-account:
+      title: Leave Account
+      x-stoplight:
+        id: 2riq7r218xyae
+      x-tags:
+        - leaves
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: leave-account
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            nature:
+              type: string
+              enum:
+                - vacations
+                - sickLeave
+    leave-accounts:
+      title: Leave Accounts
+      x-stoplight:
+        id: nyjsez809vmsw
+      x-tags:
+        - leaves
+      type: object
+      properties:
+        type:
+          type: string
+          const: leave-accounts
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+              maximum: 1000
+        embeds:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/leave-account'
+        links:
+          type: object
+          properties:
+            prev:
+              description: Link to previous page.
+              oneOf:
+                - type: object
+                  properties:
+                    href:
+                      type: string
+                      format: uri
+                    type:
+                      type: string
+                      const: 'application/lucca+json; schema=leave-accounts'
+                - type: 'null'
+            next:
+              description: Link to next page.
+              oneOf:
+                - type: object
+                  properties:
+                    href:
+                      type: string
+                      format: uri
+                    type:
+                      type: string
+                      const: 'application/lucca+json; schema=leave-accounts'
+                - type: 'null'
+    leaves:
+      title: Collection of leaves
+      x-stoplight:
+        id: 00clq72z1skwt
+      x-tags:
+        - leaves
+      properties:
+        type:
+          type: string
+          const: leaves-collection
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            totalCount:
+              type: integer
+              minimum: 0
+              maximum: 1000
+        embeds:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/leave'
+        links:
+          type: object
+          properties:
+            prev:
+              description: Link to previous page.
+              oneOf:
+                - type: object
+                  properties:
+                    href:
+                      type: string
+                      format: uri
+                    type:
+                      type: string
+                      const: 'application/lucca+json; schema=leaves'
+                - type: 'null'
+            next:
+              description: Link to next page.
+              oneOf:
+                - type: object
+                  properties:
+                    href:
+                      type: string
+                      format: uri
+                    type:
+                      type: string
+                      const: 'application/lucca+json; schema=leaves'
+                - type: 'null'
+      examples:
+        - $ref: '#/components/examples/leave-collection'
+    leave:
+      title: Leave
+      x-stoplight:
+        id: nb5h28x331yvn
+      x-tags:
+        - leaves
+      description: |
+        A Leave is a period an Employee takes off work while he should otherwise be working. Employees are entitled
+        to these either by law or by contract.
+
+        The Leave status indicates whether it has been approved by management or not. The approval process
+        is handled through the Leave Request object.
+
+        An Employee may work in the morning, and take the afternoon off, and vice versa. The `startsHalfDay` and
+        `endsHalfDay` attributes represent these properties. For example, taking the Jan. 2<sup>nd</sup> afternoon off:
+        ```json
+        {
+          "startsOn": "2023-01-02",
+          "startsHalfDay": "secondHalfDay",
+          "endsOn": "2023-01-02",
+          "endsHalfDay": "secondHalfDay"
+        }
+         ```
+
+        A Leave belongs to a Leave Account. Leave Accounts represent the different types of leaves
+        in your company: annual leaves, maternity leave, sick leave, etc...
+
+        In France, sick leaves as well as certain conventional leaves are subject to the "DSN" process
+        and thus require further details. These are to be defined as `frenchSichLeaveDetails`. Otherwise,
+        this can be left null or unserialized.
+      type: object
+      properties:
+        id:
+          type: string
+          description: |
+            Unique identifier of the Leave.
+          readOnly: true
+        type:
+          type: string
+          const: leave
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        data:
+          type: object
+          properties:
+            startsOn:
+              type: string
+              format: date
+              description: |
+                First day (included) of this employee's leave.
+            startsHalfDay:
+              allOf:
+                - $ref: '#/components/schemas/half-day-position'
+                - default: firstHalfDay
+              description: |
+                Does this leave start on the first half-day
+                (often: "morning") or the second one (often: "afternoon")?
+            endsOn:
+              type: string
+              format: date
+              description: |
+                Last day (included) of this employee's leave.
+            endsHalfDay:
+              allOf:
+                - $ref: '#/components/schemas/half-day-position'
+                - default: secondHalfDay
+              description: |
+                Does this leave end on the first half-day
+                (often: "morning") or the second one (often: "afternoon")?
+            employee:
+              type: object
+              description: |
+                The Employee who's on leave. On write requests, you can either send the id or the URL.
+              properties:
+                id:
+                  type: string
+                  description: |
+                    Unique identifier of the employee.
+                type:
+                  type: string
+                  const: employee
+                  readOnly: true
+                url:
+                  type: string
+                  format: uri
+                  description: |
+                    URL of this employee.
+            leaveAccount:
+              type: object
+              description: |
+                The Leave Account resource indicates the type of Leave, eg. 'vacations', 'sick leave', etc...
+                On write requests, you can either send the id or the URL.
+              properties:
+                id:
+                  type: string
+                  description: |
+                    Unique identifier of the Leave Account.
+                type:
+                  type: string
+                  const: leave-account
+                  readOnly: true
+                url:
+                  type: string
+                  format: uri
+                  description: |
+                    URL of the leave account.
+            includedDays:
+              type: array
+              description: |
+                Lists the days of absence. Is calculated by the server depending on the
+                Leave Account settings (eg. should Saturdays be included?).
+              items:
+                type: string
+                format: date
+              readOnly: true
+            totalDuration:
+              $ref: '#/components/schemas/duration'
+              description: |
+                Depending on the related Leave Account, a Leave may be taken in hours or in days.
+                This attribute sums the duration of the Leave on all of the days it covers.
+              readOnly: true
+            status:
+              type: string
+              description: |
+                Depends on the status of this Leave related Leave Request.
+                - `tentative`: the related Leave Request is not yet approved.
+                - `confirmed`: the related Leave Request has been approved.
+                - `cancelled`: the related Leave Request has been denied. This Leave is should not be considered valid.
+              enum:
+                - tentative
+                - confirmed
+                - cancelled
+              default: tentative
+            frenchSickLeaveDetails:
+              type:
+                - 'null'
+                - object
+              properties:
+                lastWorkingDay:
+                  description: |
+                    When left null, dynamically defaults to the last
+                    working day before the sick leave starts.
+                  type:
+                    - string
+                    - 'null'
+                  format: date
+                paidDaysCount:
+                  description: |
+                    Number of days during which the sick employee is still
+                    paid his/her salary.
+                    Defaults to the total number of sick days.
+                  type: integer
+                  minimum: 0
+                unpaidDaysCount:
+                  description: |
+                    Number of days during which the sick employee is not
+                    paid his/her salary.
+                    The sum of `paidDaysCount` and `unpaidDaysCount`
+                    cannot exceed this leave `totalDuration`.
+                  type: integer
+                  default: 0
+                  minimum: 0
+                compensationRate:
+                  description: |
+                    Percentage of his/her salary the sick employee
+                    is still paid.
+                  type:
+                    - number
+                    - 'null'
+                  multipleOf: 0.01
+                  minimum: 0
+                  maximum: 1
+                  format: decimal
+                hasSubrogation:
+                  description: |
+                    Does the employer pay the employee's salary
+                    during the sick leave and will later be
+                    subrogated to the employee'srights by
+                    the authorities?
+                  type: boolean
+                subrogationStartsOn:
+                  description: |
+                    In case of subrogation, when does it start?
+                    When left null even though subrogation is in
+                    effect, then defaults to the sick leave first day.
+                  type:
+                    - string
+                    - 'null'
+                  format: date
+                subrogationEndsOn:
+                  description: |
+                    In case of subrogation, when does it end?
+                    When left null even though subrogation is in
+                    effect, then defaults to the sick leave last day.
+                  type:
+                    - string
+                    - 'null'
+                  format: date
+                extendsSickLeave:
+                  description: |
+                    *"Prolongation"*
+                    A sick leave can extend a previous one related
+                    to the same sickness / accident / etc...
+                  oneOf:
+                    - type: 'null'
+                    - type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                          const: 'leave'
+                        url:
+                          type: string
+                          format: uri
+                      examples:
+                        - id: 73834
+                          url: 'https://my-company.ilucca.net/lucca-api/leaves/73834'
+                          type: leave
+                earlyReturnOn:
+                  description: |
+                    *"Reprise anticipée"*
+                    If employee will return sooner than expected, then
+                    indicate the day he/she will come back to work.                           to work.
+                  type:
+                    - string
+                    - 'null'
+                  format: date
+                ordinarySickness:
+                  description: |
+                    *"Maladie ordinaire"*
+                  type:
+                    - object
+                    - 'null'
+                  properties:
+                    isLongTermCondition:
+                      type: boolean
+                      description: |
+                        Long-lasting conditions are severe enough
+                        and/or have a chronic nature that requires
+                        prolonged treatment.
+                    partTimeReturnReason:
+                      type:
+                        - string
+                        - 'null'
+                      enum:
+                        - therapeutic
+                        - personal
+                    partTimeReturnRate:
+                      type:
+                        - number
+                        - 'null'
+                      format: decimal
+                      multipleOf: 0.01
+                      minimum: 0
+                      maximum: 1
+                commutingAccident:
+                  description: |
+                    *"Accident de trajet"*
+                  type:
+                    - object
+                    - 'null'
+                  properties:
+                    occurredOn:
+                      type: string
+                      format: date
+                    location:
+                      type:
+                        - string
+                        - 'null'
+                      enum:
+                        - toWork
+                        - fromWork
+                        - atLunchPlace
+                    partTimeReturnReason:
+                      type:
+                        - string
+                        - 'null'
+                      enum:
+                        - therapeutic
+                        - personal
+                    partTimeReturnRate:
+                      type:
+                        - number
+                        - 'null'
+                      format: decimal
+                      multipleOf: 0.01
+                      minimum: 0
+                      maximum: 1
+                workAccident:
+                  description: |
+                    *"Accident de travail"*
+                  type:
+                    - object
+                    - 'null'
+                  properties:
+                    occurredOn:
+                      type: string
+                      format: date
+                    partTimeReturnReason:
+                      type:
+                        - string
+                        - 'null'
+                      enum:
+                        - therapeutic
+                        - personal
+                    partTimeReturnRate:
+                      type:
+                        - number
+                        - 'null'
+                      format: decimal
+                      multipleOf: 0.01
+                      minimum: 0
+                      maximum: 1
+                occupationalDisease:
+                  description: |
+                    *"Maladie professionnelle"*
+                    An occupational disease is a health condition or
+                    disorder (e.g., cancer, musculoskeletal disorders,
+                    post-traumatic stress, etc.) that is caused by
+                    the work environment or activities related to work.
+                  type:
+                    - object
+                    - 'null'
+                  properties:
+                    symptomsFirstObservedOn:
+                      type: string
+                      format: date
+                      description: |
+                        When were the symptoms first observed
+                    partTimeReturnReason:
+                      type:
+                        - string
+                        - 'null'
+                      enum:
+                        - therapeutic
+                        - personal
+                    partTimeReturnRate:
+                      type:
+                        - number
+                        - 'null'
+                      format: decimal
+                      multipleOf: 0.01
+                      minimum: 0
+                      maximum: 1
+                maternity:
+                  description: |
+                    *"Maternité"*
+                  type:
+                    - object
+                    - 'null'
+                  properties:
+                    childArrival:
+                      type: string
+                      enum:
+                        - birth
+                        - adoption
+                    childrenCount:
+                      description: |
+                        Either adopted or birthed.
+                      type: integer
+                      minimum: 1
+                    adoptingParentsSharingLeaveRights:
+                      type: string
+                      enum:
+                        - unshared
+                        - shared
+                    childExpectedOn:
+                      type:
+                        - string
+                        - 'null'
+                      format: date
+                paternity:
+                  description: |
+                    *"Paternité"*
+                  type:
+                    - object
+                    - 'null'
+                  properties:
+                    childArrival:
+                      type: string
+                      enum:
+                        - birth
+                        - adoption
+                    childrenCount:
+                      description: |
+                        Either adopted or birthed.
+                      type: integer
+                      minimum: 1
+                    adoptingParentsSharingLeaveRights:
+                      type: string
+                      enum:
+                        - unshared
+                        - shared
+                    childExpectedOn:
+                      type:
+                        - string
+                        - 'null'
+                      format: date
+                    childArrivedOn:
+                      type:
+                        - string
+                        - 'null'
+                      format: date
+                    partitioning:
+                      type: string
+                      enum:
+                        - initial
+                        - fragmented
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+              desscription: |
+                Timestamp of this Leave creation.
+            lastUpdatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+              description: |
+                Timestamp of the time this Leave was last updated.
+          required:
+            - startsOn
+            - endsOn
+            - employee
+            - leaveAccount
+            - createdAt
+            - lastUpdatedAt
+        embeds:
+          type: object
+          properties:
+            employee:
+              $ref: '#/components/schemas/employee-embedded'
+            leaveAccount:
+              $ref: '#/components/schemas/leave-account'
+          readOnly: true
+        links:
+          type: object
+          properties:
+            leaveRequest:
+              description: |
+                Link to the related Leave Request (approval process) if it exists.
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: "application/lucca+json;schema=leave-request"
+            approve:
+              description: |
+                Link to approve the Leave Request (POST) if there's a pending related Leave Request.
+                It may need multiple approvals from different employees.
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: "application/lucca+json;schema=leave-request-step"
+            deny:
+              description: |
+                Link to deny the Leave Request (POST) if there's a pending related Leave Request.
+                A single denial is enough.
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: "application/lucca+json;schema=leave-request-step"
+          readOnly: true
+          required:
+            - startsOn
+            - endsOn
+            - employee
+      required:
+        - id
+        - type
+        - url
+        - data
+      examples:
+        - $ref: '#/components/examples/john-doe-vacations'
+    leave-request:
+      title: Leave Request
+      x-stoplight:
+        id: 84g1wm6vzb8qf
+      x-tags:
+        - leaves
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: leave-request
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            status:
+              oneOf:
+                - title: pending
+                  type: string
+                  const: pending
+                  description: |
+                    This Leave Request has yet to be approved.
+                - title: denied
+                  type: string
+                  const: denied
+                  description: |
+                    This Leave Request has been denied.
+                - title: approved
+                  type: string
+                  const: approved
+                  description: |
+                    This Leave Request has been approved.
+            leave:
+              type: object
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                  const: leave
+                url:
+                  type: string
+                  format: uri
+              required:
+                - id
+                - type
+                - url
+            requester:
+              type: object
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                  const: account
+                url:
+                  type: string
+                  format: uri
+              required:
+                - id
+                - type
+                - url
+            expectedApprover:
+              type:
+                - object
+                - 'null'
+              properties:
+                id:
+                  type: string
+                  readOnly: true
+                type:
+                  type: string
+                  const: employee
+                  readOnly: true
+                url:
+                  type: string
+                  format: uri
+                  readOnly: true
+              readOnly: true
+              required:
+                - id
+                - type
+                - url
+            currentStep:
+              type: integer
+              minimum: 0
+              readOnly: true
+            totalStepsCount:
+              type: integer
+              minimum: 0
+              readOnly: true
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+          required:
+            - status
+            - leave
+            - requester
+            - step
+            - stepCount
+            - createdAt
+        embeds:
+          type: object
+          properties:
+            leave:
+              $ref: '#/components/schemas/leave'
+            requester:
+              $ref: '#/components/schemas/account-embedded'
+            steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/leave-request-step'
+            expectedApprover:
+              $ref: '#/components/schemas/employee-embedded'
+        links:
+          type: object
+          properties:
+            approve:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: "application/lucca+json;schema=leave-request-step"
+            deny:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: "application/lucca+json;schema=leave-request-step"
+      required:
+        - id
+        - type
+        - url
+    leave-requests:
+      title: Leave Requests (collection)
+      x-stoplight:
+        id: 34q6zthvdsfa4
+      x-tags:
+        - leaves
+      type: object
+      properties:
+        type:
+          type: string
+          const: leave-requests
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+        embeds:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/leave-request'
+        links:
+          type: object
+          properties:
+            prev:
+              oneOf:
+                - type: object
+                  properties:
+                    href:
+                      type: string
+                      format: uri
+                    type:
+                      type: string
+                      const: 'application/lucca+json; schema=leave-requests'
+                - type: 'null'
+            next:
+              oneOf:
+                - type: object
+                  properties:
+                    href:
+                      type: string
+                      format: uri
+                    type:
+                      type: string
+                      const: 'application/lucca+json; schema=leave-requests'
+                - type: 'null'
+    leave-request-step:
+      title: Leave Request Step
+      x-stoplight:
+        id: e90990a31aeea
+      x-tags:
+        - leaves
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        type:
+          type: string
+          const: leave-request-step
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        data:
+          type: object
+          properties:
+            leaveRequest:
+              type: object
+              description: |
+                The Leave Request to approve or deny. On write requests, may be
+                identified either via its id or its URL.
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                  const: leave-request
+                  readOnly: true
+                url:
+                  type: string
+                  format: uri
+            approver:
+              type: object
+              description: |
+                Employee that approves or denies this Leave Request.
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                  const: employee
+                  readOnly: true
+                url:
+                  type: string
+                  format: uri
+            action:
+              type: string
+              enum:
+                - approve
+                - deny
+              default: approve
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+          required:
+            - leaveRequest
+            - approver
+      required:
+        - data
+    employee-embedded:
+      title: Employee (light embedded representation)
+      x-stoplight:
+        id: 899w7dhxxcg9j
+      x-tags:
+        - internal
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: employee
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            givenName:
+              type: string
+            familyName:
+              type: string
+        links:
+          type: object
+          properties:
+            picture:
+              type:
+                - object
+                - 'null'
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: image/jpeg
+    account-embedded:
+      title: account-embedded
+      x-stoplight:
+        id: obzdjtiza3qj8
+      x-tags:
+        - internal
+      type: object
+      properties:
+        id:
+          type: string
+          x-stoplight:
+            id: j8rc58ll6m2fn
+    webhook-subscription:
+      title: Webhook Subscription
+      x-stoplight:
+        id: xk13az9tbzzp6
+      x-tags:
+        - events
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: webhook-subscription
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            application:
+              type: object
+              properties:
+                id:
+                  type: string
+                  readOnly: true
+                type:
+                  type: string
+                  const: 'application'
+                  readOnly: true
+                url:
+                  type: string
+                  format: uri
+                  readOnly: true
+            webhook:
+              type: string
+              format: uri
+              description: |
+                The URL of the receiving endpoint (on your side).
+            listenedTypes:
+              type: array
+              items:
+                type: string
+                oneOf:
+                  - title: leave.created
+                    const: leave.created
+                    description: |
+                      Occurs upon creation of a new Leave.
+                  - title: leave.updated
+                    const: leave.updated
+                    description: |
+                      Occurs upon modification of an existing Leave.
+                  - title: leave.deleted
+                    const: leave.deleted
+                    description: |
+                      Occurs upon deletion of an existing Leave.
+            status:
+              description: |
+                - `active`: delivery attempts will be executed. Needs confirmation.
+                - `suspended`: if too many errors are	encountered on delivery. But events are kept in history
+                - `inactive`: events are neither sent nor kept in history
+              type: string
+              enum:
+                - 'active'
+                - 'suspended'
+                - 'inactive'
+              default: 'inactive'
+              readOnly: true
+            contentType:
+              type: string
+              enum:
+                - 'default'
+                - 'cloudEvents'
+            confirmatedAt:
+              description:  |
+                Indicates the point in time of the most recent (re)confirmation of the receiver endpoint.
+              type:
+                - string
+                - 'null'
+              format: date-time
+              examples:
+                - '2023-08-29T09:12:33.001Z'
+              readOnly: true
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            lastUpdatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+        links:
+          type: object
+          properties:
+            events:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                  examples:
+                    - 'https://example.ilucca.net/lucca-api/webhook-events?subscriptionId=xxx'
+                type:
+                  type: string
+                  const: 'application/lucca+json; schema=webhook-events'
+    webhook-subscriptions:
+      title: Webhook Subscriptions Collection
+      x-stoplight:
+        id: 72xhx6ug0a82b
+      x-tags:
+        - events
+      type: object
+      properties:
+        type:
+          type: string
+          const: webhook-subscriptions
+        url:
+          type: string
+          format: uri
+        data:
+          type: object
+          properties:
+            totalCount:
+              type: integer
+              minimum: 0
+              maximum: 1000
+        embeds:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/webhook-subscription'
+        links:
+          type: object
+          properties:
+            prev:
+              type:
+                - object
+                - 'null'
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: 'webhook-subscriptions'
+            next:
+              type:
+                - object
+                - 'null'
+              properties:
+                href:
+                  type: string
+                  format: uri
+                type:
+                  type: string
+                  const: 'webhook-subscriptions'
+  securitySchemes:
+    oAuth:
+      type: oauth2
+      description: |
+        This API uses OAuth 2 with the authorizationCode grant flow.
+
+        Authorization URL is at root level, eg. `https://example.ilucca.net/identity/connect/authorize`.
+      flows:
+        authorizationCode:
+          authorizationUrl: /identity/connect/authorize
+          tokenUrl: /identity/connect/token
+          scopes:
+            leaves.read: Read your Employees' Leaves.
+            leaves.write: Create or delete Employees' Leaves.
+security:
+  - oAuth:
+      - leaves.read
+      - leaves.write

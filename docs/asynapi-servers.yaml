@@ -1,0 +1,99 @@
+asyncapi: '2.5.0'
+info:
+  title: Streetlights API - with 2 servers
+  version: '1.0.2'
+  description: |
+    The Smarlighting Streetlights API allows
+    to remotely manage the city
+  license:
+    name: "LICENSE"
+    url: 'https://www.apache.org/licenses/LICENSE-2.0'
+servers:
+  mosquitto:
+    url: mqtt://test.mosquitto.org
+    protocol: mqtt
+    protocolVersion: 33
+    description: This server can be used with mqtt protocol, to receive message about streetlights.
+  https:
+    url: https://example.com
+    protocol: https
+    protocolVersion: 1.1
+    description: This server can be used with HTTP protocol, somehow REST API receiving messages.
+channels:
+  light/{lightID}/measured:
+    publish:
+      # operationId: "same-operation-id"
+      description: We wan to subscribe
+      # operationId: SubscribeMe
+      message:
+        title: Subscribe
+        headers:
+          oneOf:
+            - type: object
+              description: this is a headers, anyOf number#1
+              properties:
+                pay:
+                  type: integer
+                  minimum: 0
+                  description: Header property
+            - type: object
+              description: this is a headers, anyOf number#2
+              properties:
+                hello:
+                  type: string
+                  description: Header property
+                world:
+                  type: integer
+                  description: 42
+            - type: integer
+              description: this is a headers, integer only
+              minimum: 17
+              maximum: 89
+        payload:
+          anyOf:
+            - $ref: "#/components/schemas/PayloadPapa"
+            - $ref: "#/components/schemas/PayloadBravo"
+          allOf:
+            - $ref: "#/components/schemas/MoreDetails"
+            # - $ref: "#/components/schemas/PayloadFriday"
+            # - type: integer
+            #   description: this is a integer payload, integer only
+            #   minimum: 17
+            #   maximum: 89
+            # - type: integer
+            #   description: this is a integer payload 69, with example
+            #   example: 69
+
+components:
+  schemas:
+    MoreDetails:
+      description: this description from MoreDetails
+      default: this is default value
+    PayloadPapa:
+      type: object
+      properties:
+        papa:
+          type: integer
+          minimum: 0
+          maximum: 99
+          description: allo alpha ?
+          deprecated: true
+        tangooo:
+          type: string
+          description: allo tango
+        charly:
+          type: boolean
+          description: allo charly
+    PayloadBravo:
+      type: object
+      properties:
+        bravooo:
+          type: integer
+          minimum: 0
+          maximum: 42
+          description: ah bravo - code quantum
+    PayloadFriday:
+      type: array
+      items:
+        type: string
+        default: friday
